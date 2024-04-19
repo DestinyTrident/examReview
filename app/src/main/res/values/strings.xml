@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">examReview</string>
+    <string name="cardKey">scryfallCardId</string>
+    <string name="load_preference">Load Preference</string>
+    <string name="fail">Fail To Connect:\nCheck if you are connected the internet</string>
+    <string name="randomize_card">Randomize Card</string>
+    <string name="reconnect">Reconnect</string>
+    <string name="card_name">Card Name</string>
+</resources>
