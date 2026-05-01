@@ -7,4 +7,5 @@
     <string name="reconnect">Reconnect</string>
     <string name="card_name">Card Name</string>
     <string name="test">Test</string>
+    <string name="connectionFailure">Connection Failure</string>
 </resources>

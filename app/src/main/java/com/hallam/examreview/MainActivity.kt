@@ -1,6 +1,5 @@
 package com.hallam.examreview
 
-import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -12,13 +11,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.hallam.examreview.databinding.ActivityMainBinding
-import com.hallam.examreview.model.scryfallCardModel
 import com.hallam.examreview.model.viewModel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -83,7 +77,7 @@ class MainActivity : AppCompatActivity() {
                     updateCardJsonString(jsonString,false)
                 } else {
                     runOnUiThread{
-                        binding.txtThreadfailure.text="Connection Failure"
+                        binding.txtThreadfailure.text=getString(R.string.connectionFailure)
                     }
                 }
                 connection.disconnect()
@@ -110,7 +104,7 @@ class MainActivity : AppCompatActivity() {
                 updateCardJsonString(jsonString,true)
             } else {
                 runOnUiThread{
-                    binding.txtThreadfailure.text="Connection Failure"
+                    binding.txtThreadfailure.text=getString(R.string.connectionFailure)
                 }
             }
                 connection.disconnect()
