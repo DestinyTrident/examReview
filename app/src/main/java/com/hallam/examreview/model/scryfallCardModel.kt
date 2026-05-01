@@ -12,7 +12,7 @@ class scryfallCardModel(cardName:String, cardID:String, oracleText:String, image
     private var image = imageUri
 
     override fun toString(): String {
-        var str = " Name = ${CardName}\n ID = ${CardID}\n oracle_text = ${oracle_text}\n imageUri = ${image}"
+        val str = " Name = ${CardName}\n ID = ${CardID}\n oracle_text = ${oracle_text}\n imageUri = ${image}"
         return str
     }
 

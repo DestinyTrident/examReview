@@ -38,8 +38,8 @@ android {
 }
 
 dependencies {
-    implementation("com.google.code.gson:gson:2.8.9")
-    implementation ("com.github.bumptech.glide:glide:4.16.0")
+    implementation("com.google.code.gson:gson:2.14.0")
+    implementation ("com.github.bumptech.glide:glide:5.0.7")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

@@ -6,4 +6,5 @@
     <string name="randomize_card">Randomize Card</string>
     <string name="reconnect">Reconnect</string>
     <string name="card_name">Card Name</string>
+    <string name="test">Test</string>
 </resources>

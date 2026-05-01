@@ -7,13 +7,17 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.hallam.examreview.databinding.ActivityMainBinding
 import com.hallam.examreview.model.scryfallCardModel
+import com.hallam.examreview.model.viewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -29,105 +33,103 @@ class MainActivity : AppCompatActivity() {
     private var connected = true
     private var cardID = ""
     private var cardJsonString = ""
-    override fun onCreate(savedInstanceState: Bundle?) {
 
-        binding= ActivityMainBinding.inflate(layoutInflater)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        binding = ActivityMainBinding.inflate(layoutInflater)
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
 
-        helper= sharedPrefHelper(this)
-        jsonConvert = jsonConverter(this)
+        //Creation of the  ViewModel
+        val viewModel= ViewModelProvider(this)[viewModel::class.java]
+        //Observing any changes to the viewModel
+        viewModel.connectionStatus.observe(this){
+            x-> connected =x; setOnClicks(x)
+            Toast.makeText(applicationContext,"Connection State $x",Toast.LENGTH_SHORT).show()
+            //binding.txtThreadfailure.text="Connection State $x"
+        }
 
+        helper = sharedPrefHelper(applicationContext)
+        jsonConvert = jsonConverter(applicationContext)
         cardImage = binding.imgCardImage
         cardName = binding.txtLoadedCardName
         loadButton = binding.btnLoadPrefs
         randomizeButton = binding.btnRandomize
-        binding.btnReconnect.setOnClickListener{
-            /* Check Connection to for the Internet */
-            connected = false
+        lifecycleScope.launch { viewModel.testConnection(applicationContext) }
+
+        if(connected){
+            fetchCard("4a2e428c-dd25-484c-bbc8-2d6ce10ef42c").start()
         }
-        setOnClicks(connected)
+
+        binding.btnReconnect.setOnClickListener {
+            lifecycleScope.launch { viewModel.testConnection(applicationContext) }
+            Toast.makeText(applicationContext,"Testing Connection",Toast.LENGTH_SHORT).show()
+        }
     }
-
-    private fun loadCardInfo(cardModel: scryfallCardModel,randomized:Boolean) {
-
-
-    }
-
-    private fun fetchStartCard(id:String):Thread{
+//Uses the Scryfall API to fetch a Magic Card from the inputted cardID
+// like 4a2e428c-dd25-484c-bbc8-2d6ce10ef42c, and it will retrieve a Black Lotus card
+    private fun fetchCard(card:String):Thread{
         return Thread{
-            //Loading Card to a model then update UI with the data from model
-            val url = URL("https://api.scryfall.com/cards/${id}?format=json&pretty=true")
-            val connection = url.openConnection() as HttpURLConnection
-            if(connection.responseCode == 200){
-                // Success
-                val inputSystem = connection.inputStream
-                val inputStreamReader = InputStreamReader(inputSystem,"UTF-8")
-                var jsonStr =""
-// inputStreamReader is a json format currently
+            try{
+                val url = URL("https://api.scryfall.com/cards/${card}?format=json&pretty=true")
+                val connection = url.openConnection() as HttpURLConnection
 
-               val list = inputStreamReader.readLines()
-                for(index in list){
-                    jsonStr+=index
-                    Log.i("Tester",index)
+                connection.requestMethod="GET"
+                connection.setRequestProperty("UserAgent","ExamReviewApp/1.0")//App Identification
+                connection.setRequestProperty("Accept","application/json")
+
+                if(connection.responseCode==200){
+                    val jsonString=connection.inputStream.bufferedReader().use{it.readText()}
+                    updateCardJsonString(jsonString,false)
+                } else {
+                    runOnUiThread{
+                        binding.txtThreadfailure.text="Connection Failure"
+                    }
                 }
-                Log.i("Tester",(jsonStr =="").toString())
-
-                updateCardJsonString(jsonStr,false)
-
-                inputStreamReader.close()
-                inputSystem.close()
-            }else{
-                //Failure
-                binding.txtThreadfailure.text = getString(R.string.fail)
+                connection.disconnect()
+            }catch(e: Exception){
+                Log.e("Tester","Connection Failed",e)
             }
         }
     }
 
-    // Running API collecting Thread
-    private fun fetchRandomCard():Thread{
-        return Thread{
-            val url = URL("https://api.scryfall.com/cards/random")
-            val connection = url.openConnection() as HttpURLConnection
-            if(connection.responseCode == 200){
-                // Success
-                val inputSystem = connection.inputStream
-                val inputStreamReader = InputStreamReader(inputSystem,"UTF-8")
-                var jsonStr =""
+//Uses the Scryfall API to fetch a random Magic Card
+    private fun fetchRandomCard():Thread {
+       return Thread{
+            try{
+           val url = URL("https://api.scryfall.com/cards/random?format=json&pretty=true")
+           val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod="GET"
+                connection.setRequestProperty("UserAgent","ExamReviewApp/1.0")//App Identification
+                connection.setRequestProperty("Accept","application/json")
 
-                val list = inputStreamReader.readLines()
-                for(index in list){
-                    jsonStr+=index
-                    Log.i("Tester",index)
+           //Log.i("Tester","Has Internet Connection: $connected")
+           //Log.i("Tester","responseCode of Connection: ${connection.responseCode}")
+            if(connection.responseCode==200){
+                val jsonString=connection.inputStream.bufferedReader().use{it.readText()}
+                updateCardJsonString(jsonString,true)
+            } else {
+                runOnUiThread{
+                    binding.txtThreadfailure.text="Connection Failure"
                 }
-                Log.i("Tester",(jsonStr =="").toString())
-
-                updateCardJsonString(jsonStr,true)
-
-                inputStreamReader.close()
-                inputSystem.close()
-
-            }else{
-                //Failure
-                binding.txtThreadfailure.text = getString(R.string.fail)
             }
-
-        }
+                connection.disconnect()
+            }catch(e: Exception){
+                Log.e("Tester","Connection Failed",e)
+            }
+       }
     }
-
+//This Function is to update the JSON inbound by the function
     private fun updateCardJsonString(json:String,randomized: Boolean){
         runOnUiThread{
             kotlin.run {
-                Log.i("Tester",(json !="").toString())
                 cardJsonString = json
-                Log.i("Tester",(cardJsonString !="").toString())
                 if(cardJsonString !="") {
 
                     val model = jsonConvert.generateCardModel(cardJsonString)
-                    Log.i("Tester", model.toString())
 
                     //cardImage// UNKNOWN IF YOU CAN PUT IMAGE RESOURCE BY URI
-                    if(randomized || model.getCardID() == "4a2e428c-dd25-484c-bbc8-2d6ce10ef42c"){
+                    if(randomized){
                         helper.setCardId(model.getCardID())
                     }
                     cardName.text = model.getCardName()
@@ -137,24 +139,19 @@ class MainActivity : AppCompatActivity() {
                     //Link to the documentation of Glide: https://bumptech.github.io/glide/
                     Glide.with(this).load(model.getImageURI()).into(cardImage)
                     //END OF GLIDE API
-
-                    Log.i("Tester", model.getImageURI().toString())
                 }
             }
         }
     }
-private fun setOnClicks(bool:Boolean){
+
+    private fun setOnClicks(bool:Boolean){
     if(bool){
         randomizeButton.setOnClickListener {
             fetchRandomCard().start()
         }
         loadButton.setOnClickListener {
-
             cardID = helper.getCardId()
-            fetchStartCard(cardID).start()
-        }
-        binding.button.setOnClickListener {
-            fetchStartCard("4a2e428c-dd25-484c-bbc8-2d6ce10ef42c").start()
+            fetchCard(cardID).start()
         }
     }else{
         randomizeButton.setOnClickListener {
@@ -163,16 +160,13 @@ private fun setOnClicks(bool:Boolean){
         loadButton.setOnClickListener {
             notConnected()
         }
-        binding.button.setOnClickListener {
-            notConnected()
-        }
     }
 }
-    private fun notConnected(){
-        val text = "Please Connect to the Internet if you did click on the xyz button"
+    private fun notConnected()
+    {
+        val text = "Please Connect to the Internet if you did click on the Reconnect button"
         Toast.makeText(this,text,Toast.LENGTH_LONG).show()
         binding.txtThreadfailure.textSize=25F
         binding.txtThreadfailure.text = text
     }
-
 }
